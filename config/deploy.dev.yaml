@@ -1,0 +1,4 @@
+# Deploy target for --env dev. One file per env: config/deploy.<env>.yaml.
+project: infra-dev-project
+staging_bucket: gs://ws-agent-dev
+region: asia-northeast1

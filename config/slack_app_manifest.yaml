@@ -1,0 +1,24 @@
+# Slack App manifest for ws-agent.
+# Create at https://api.slack.com/apps → "Create New App" → "From a manifest".
+# Read-only user scopes only; no bot, no event subscriptions.
+#
+# Do NOT opt into token rotation. A rotating token would force the runtime to
+# rewrite its own stored credential, turning a statically managed secret into
+# runtime state. Without rotation the user token is a stable
+# value, installed once by a human, exactly like the Backlog API key.
+display_information:
+  name: ws-agent
+  description: Read-only workspace search for ws-agent
+oauth_config:
+  scopes:
+    user:
+      - search:read
+      - channels:history
+      - channels:read
+      - groups:history
+      - groups:read
+      - users:read
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

@@ -1,0 +1,17 @@
+# Local verification env (never committed)
+*.personal.yaml
+*.personal.json
+agent/scripts/setup_personal.sh
+
+# Build artifacts and caches
+frontend/frontend
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Tooling state
+.claude/
+.metadata_never_index

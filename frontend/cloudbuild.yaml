@@ -1,0 +1,19 @@
+# BFF build & deploy. WS_PROJECTS / WS_ENGINES are rendered by the deploy
+# pipeline from config/projects.yaml (substitutions kept out of source).
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: [build, -t, "${_IMAGE}", frontend]
+  - name: gcr.io/cloud-builders/docker
+    args: [push, "${_IMAGE}"]
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ws-agent-bff
+      - --image=${_IMAGE}
+      - --region=asia-northeast1
+      - --no-allow-unauthenticated
+      - --set-env-vars=WS_PROJECTS=${_WS_PROJECTS},WS_ENGINES=${_WS_ENGINES}
+substitutions:
+  _IMAGE: asia-northeast1-docker.pkg.dev/${PROJECT_ID}/ws-agent/bff:latest
