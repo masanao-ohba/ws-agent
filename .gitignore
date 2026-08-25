@@ -14,6 +14,9 @@ __pycache__/
 .ruff_cache/
 .venv/
 
+# Working notes (organisation-internal, tied to one project's state)
+docs/RETRIEVAL_QUALITY.md
+
 # Tooling state
 .claude/
 .metadata_never_index

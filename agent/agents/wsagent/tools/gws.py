@@ -190,7 +190,6 @@ async def search_drive_files(query: str, tool_context: ToolContext) -> dict[str,
 
     Use this to find documents by name or content keyword. Returns a snapshot
     envelope; follow up with read_drive_document for full content.
-    Answer in Japanese.
 
     Args:
         query: Keyword to match file names and content.
@@ -229,7 +228,7 @@ async def read_drive_document(file_id: str, tool_context: ToolContext) -> dict[s
 
     Use this after search_drive_files. Dispatches by MIME type:
     Docs -> documents.get (includeTabsContent), Sheets -> values.batchGet,
-    Slides -> presentations.get. Answer in Japanese.
+    Slides -> presentations.get.
 
     Args:
         file_id: Drive file id from a previous search result.

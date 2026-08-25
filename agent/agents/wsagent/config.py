@@ -28,6 +28,9 @@ class GithubConfig(BaseModel):
     pat_secret: str | None = None
     installation_id: int | None = None
     repos: list[str] = Field(default_factory=list)  # search hint, not a boundary
+    # Forks are absent from GitHub's code index: a query there answers zero
+    # for any term, which is indistinguishable from "no such code".
+    code_search_indexed: bool = True
 
 
 class GwsConfig(BaseModel):

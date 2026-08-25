@@ -88,7 +88,7 @@ async def search_slack_messages(query: str, tool_context: ToolContext) -> dict[s
 
     Use this to find past discussions and decisions. Returns a snapshot
     envelope; each item's url is the message permalink, and extra carries
-    channel/thread identifiers for get_slack_thread. Answer in Japanese.
+    channel/thread identifiers for get_slack_thread.
 
     Args:
         query: Keywords to search for.
@@ -124,7 +124,7 @@ async def get_slack_thread(
     """Read one Slack thread in full (parent message and all replies).
 
     Use this after search_slack_messages to reconstruct the context of a
-    discussion. Answer in Japanese.
+    discussion.
 
     Args:
         channel_id: Channel id like "C0123456789", from a search result.

@@ -18,6 +18,7 @@ from agents.wsagent.gateway.mcp_client import GITHUB_ALLOWED, McpSession, ToolNo
 from agents.wsagent.schemas import Envelope, FailureReason, Item, Source
 
 CONFIG = Path(__file__).resolve().parent.parent.parent / "config" / "projects.yaml"
+ORG_CONFIG = CONFIG.with_name("projects.organization-personal.yaml")
 
 
 def _item(body: str = "x") -> Item:
@@ -26,6 +27,16 @@ def _item(body: str = "x") -> Item:
 
 def test_projects_yaml_matches_runtime_schema() -> None:
     Registry.model_validate(yaml.safe_load(CONFIG.read_text()))
+
+
+@pytest.mark.skipif(not ORG_CONFIG.exists(), reason="env-local registry, not in the repository")
+def test_organization_personal_yaml_matches_runtime_schema() -> None:
+    raw = yaml.safe_load(ORG_CONFIG.read_text())
+    Registry.model_validate(raw)
+    # A key the schema does not define is dropped without a word, so config
+    # that reads as meaningful would have no effect. anchors are session
+    # state, supplied per conversation, never from the registry.
+    assert all("anchors" not in project for project in raw["projects"])
 
 
 def test_envelope_failure_flips_complete() -> None:

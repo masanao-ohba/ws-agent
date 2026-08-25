@@ -97,6 +97,18 @@ BFF は `--iap` 付きでデプロイされ、`X-Goog-Authenticated-User-Email` 
 
 > **注意**: `WS_DEV_USER` はローカル開発専用で IAP をバイパスする。**IAP 有効環境では絶対に設定しない**こと。
 
+### 2.5 エージェント構成
+
+応答と探索は別エージェントに分離されている。orchestrator は検索ツールを構造的に
+持たないため、自ら探索できない。素材の充足判定を応答側に置くことで、探索の途中で
+止まった応答がそのままユーザーに届く経路を塞いでいる。
+
+```
+root: _RetryPlanOnlyAgent          ツール呼出ゼロのターンを 1 度だけ再実行
+ └─ orchestrator (wsagent_llm)     応答 + 探索の指揮。tools=[AgentTool(explorer)]
+     └─ explorer                    検索・読取ツール 16 個
+```
+
 ## 3. 変更とデプロイ
 
 ### 3.1 変更の種類と必要な操作
@@ -146,9 +158,11 @@ Cloud Build でイメージをビルドし、レジストリを `WS_PROJECTS` / 
 
 | 項目 | 現在値 | 根拠 |
 |---|---|---|
-| モデル | `gemini-2.5-flash` | ツール呼び出しの確実性(グラウンディング)と応答速度の両立 |
+| モデル | `gemini-2.5-flash`(両エージェント共通) | ツール呼び出しの確実性(グラウンディング)と応答速度の両立 |
 | temperature | `0.5` | 探索軌道の再現性と考察の幅のバランス |
-| thinking | `thinking_budget=-1`(dynamic) | 入力の難易度に応じて自動配分 |
+| thinking(explorer) | `thinking_budget=-1`(dynamic) | 探索実行が主で判断の比重が低い |
+| thinking(orchestrator) | `thinking_budget=8192`(固定) | dynamic ではモデルが思考を省略し、素材と質問の主題一致判定が働かなかった |
+| explorer 呼出上限 | 3 回 / ターン | 再依頼ループの暴走防止。超過時は手持ちの素材で回答 |
 | endpoint | global | リージョナル割当逼迫時の 429 回避 |
 </details>
 
@@ -182,3 +196,4 @@ Cloud Build でイメージをビルドし、レジストリを `WS_PROJECTS` / 
 | 403 "not a member" | — | レジストリ `members` に IAP メールが無い。YAML 更新 → BFF 再デプロイ |
 | IAP の「アクセス権がありません」画面 | — | IAP 側に未反映。`frontend/sync_iap.sh <env> --dry-run` で差分を確認し同期 |
 | ツールが空封筒を返す | 封筒の `failures[].reason` | `not_configured`(レジストリに該当ソースの設定なし)/ `timeout` / `upstream_error` を自己申告している |
+| GitHub コード検索が常に 0 件 | 封筒の `failures[].reason` が `not_configured` | 対象が fork のため GitHub の索引対象外。`code_search_indexed: false` による意図的な遮断。ソースへは `search_github_paths` / `list_github_tree` から到達する |
