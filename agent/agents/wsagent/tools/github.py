@@ -1,7 +1,5 @@
 """GitHub tools: official remote MCP (readonly endpoint) via the gateway.
-
-Every tool answers with one text content part holding JSON.
-"""
+Every tool answers with one text content part holding JSON."""
 
 import asyncio
 import json
@@ -69,12 +67,9 @@ def _payload(result: dict[str, Any]) -> Any:
 
 
 def _search_items(project: Project, kind: str, result: dict[str, Any]) -> list[Item]:
-    """Search results: {total_count, incomplete_results, items[]}.
-
-    Item shapes differ by kind: issues/PRs carry html_url + title + body,
-    while code hits carry only name/path/sha and a repository *string*
-    (not the object the REST API returns), so their URL is composed.
-    """
+    """Items out of {total_count, incomplete_results, items[]}. Issues/PRs carry
+    html_url; code hits carry a repository *string* (not the object REST
+    returns) plus path, so their URL is composed."""
     body = _payload(result)
     items = body.get("items", []) if isinstance(body, dict) else []
     out = []
@@ -137,8 +132,8 @@ async def search_github(query: str, kind: str, tool_context: ToolContext) -> dic
 
     async def fetch(project: Project) -> list[Item]:
         assert project.github is not None
-        # An unindexed project answers zero for any term; say so instead of
-        # letting an empty result read as "this code does not exist".
+        # An unindexed project answers zero for any term; say so rather than
+        # let an empty result read as "this code does not exist".
         if kind == "code" and not project.github.code_search_indexed:
             raise NotConfigured()
         scope = " ".join(f"repo:{r}" for r in project.github.repos)
@@ -151,11 +146,9 @@ async def search_github(query: str, kind: str, tool_context: ToolContext) -> dic
 
 
 def _match_paths(tree: dict[str, Any], query: str) -> tuple[list[str], bool]:
-    """Blob paths of one tree containing `query`, case-insensitively.
-
-    Returns the capped paths and whether anything was left out — by the cap
-    here, or by GitHub itself when a tree is too large (`truncated`).
-    """
+    """Blob paths of one tree containing `query`, case-insensitively. Returns
+    the capped paths and whether anything was left out — by the cap here, or by
+    GitHub itself when a tree is too large (`truncated`)."""
     needle = query.lower()
     paths = [
         e["path"]
@@ -167,11 +160,8 @@ def _match_paths(tree: dict[str, Any], query: str) -> tuple[list[str], bool]:
 
 
 async def _tree(client: httpx.AsyncClient, repo: str, token: str) -> dict[str, Any]:
-    """The whole file list of the default branch, in one request.
-
-    This is the git data API, not the search index, so it answers for forks
-    too — which is the point of reading paths at all.
-    """
+    """The whole file list of the default branch, in one request. The git data
+    API, not the search index, so it answers for forks too."""
     resp = await client.get(
         f"https://api.github.com/repos/{repo}/git/trees/HEAD",
         params={"recursive": "1"},
@@ -202,9 +192,8 @@ async def search_github_paths(query: str, tool_context: ToolContext) -> dict[str
         query: Fragment of a path or identifier, e.g. "PaymentReceipt".
     """
     projects = registry().projects_for(tool_context.state["project_ids"])
-    # fan_out turns exceptions into failures, but a cap is not an exception:
-    # the repos that hit one are collected here and declared on the envelope
-    # afterwards, so a capped answer never passes as complete.
+    # A cap is not an exception, so fan_out cannot see it: repos that hit one
+    # are collected here and declared on the envelope afterwards.
     capped: list[str] = []
 
     async def fetch(project: Project) -> list[Item]:
@@ -303,8 +292,8 @@ async def read_github_file(repo: str, path: str, tool_context: ToolContext) -> d
         result = _session(project).call_tool(
             "get_file_contents", {"owner": owner, "repo": name, "path": path}
         )
-        # content[0] is a status text; the file
-        # itself arrives as a resource part {uri, mimeType, text}.
+        # content[0] is a status text; the file itself arrives as a resource
+        # part {uri, mimeType, text}.
         for part in result.get("content") or []:
             resource = part.get("resource")
             if isinstance(resource, dict) and resource.get("text"):
@@ -323,14 +312,12 @@ async def read_github_file(repo: str, path: str, tool_context: ToolContext) -> d
 
 
 def _entries_at(tree: dict[str, Any], path: str) -> tuple[list[tuple[str, str]], bool]:
-    """The (path, type) pairs directly under `path` in one tree.
+    """The (path, type) pairs directly under `path`, directories first.
 
-    A recursive tree lists every level flattened, so one level is the
-    entries whose remainder after the prefix holds no further slash.
-    Directories come first: the point is to see where to descend next.
-    Returns the capped entries and whether anything was left out — by the
-    cap here, or by GitHub itself when a tree is too large (`truncated`).
-    """
+    A recursive tree lists every level flattened, so one level is the entries
+    whose remainder after the prefix holds no further slash. Returns the capped
+    entries and whether anything was left out — by the cap here, or by GitHub
+    itself when a tree is too large (`truncated`)."""
     prefix = f"{path.strip('/')}/" if path.strip('/') else ""
     trees: list[tuple[str, str]] = []
     blobs: list[tuple[str, str]] = []
@@ -363,8 +350,7 @@ async def list_github_tree(repo: str, path: str, tool_context: ToolContext) -> d
         path: Directory within the repository; "" is the repository root.
     """
     projects = registry().projects_for(tool_context.state["project_ids"])
-    # As in search_github_paths: a cap is not an exception, so the repo that
-    # hit one is declared on the envelope after the fan-out.
+    # As in search_github_paths: a cap is declared after the fan-out.
     capped: list[str] = []
 
     async def fetch(project: Project) -> list[Item]:
@@ -412,8 +398,8 @@ async def get_github_item(repo: str, number: int, tool_context: ToolContext) -> 
     async def fetch(project: Project) -> list[Item]:
         owner, name = repo.split("/", 1)
         session = _session(project)
-        # An issue number and a PR number share one sequence; try the issue
-        # reader first and fall back rather than asking the model which it is.
+        # Issue and PR numbers share one sequence: try the issue reader first
+        # and fall back, rather than asking the model which it is.
         try:
             result = session.call_tool(
                 "issue_read", {"method": "get", "owner": owner, "repo": name,

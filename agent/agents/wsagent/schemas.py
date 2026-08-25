@@ -41,11 +41,8 @@ class Item(BaseModel):
 
 
 class Envelope(BaseModel):
-    """Uniform snapshot envelope returned by every tool.
-
-    Incompleteness is always self-declared: `failures` is present even when
-    empty, and any failure or truncation flips `complete` to False.
-    """
+    """Uniform snapshot envelope returned by every tool. Incompleteness is
+    self-declared: any failure or truncation flips `complete` to False."""
 
     source: Source
     projects: list[str]

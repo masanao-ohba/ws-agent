@@ -1,11 +1,6 @@
-"""TokenProvider: unattended access-token renewal for all outbound connections.
-
-One implementation per auth style, one interface. Secrets are resolved from
-Secret Manager lazily and cached in memory; access tokens are cached until
-5 minutes before expiry. All failures surface as AuthError, which the tool
-layer converts to an envelope failure (auth_expired) — never an exception
-escaping to the LLM.
-"""
+"""Unattended access-token renewal, one implementation per auth style. Tokens
+are cached until 5 minutes before expiry; every failure surfaces as AuthError,
+which the tool layer turns into an auth_expired envelope failure."""
 
 import time
 from dataclasses import dataclass, field
@@ -24,11 +19,7 @@ class AuthError(Exception):
 
 
 class SecretStore(Protocol):
-    """Abstraction over Secret Manager so tests can substitute a dict.
-
-    Read-only: credentials are static values managed by humans, never
-    rewritten by the runtime.
-    """
+    """Read-only view of Secret Manager, so tests can substitute a dict."""
 
     def get(self, secret_name: str) -> str: ...
 
@@ -82,8 +73,7 @@ class OAuthRefresher:
 
 @dataclass
 class GithubAppTokens:
-    """GitHub App: JWT signed with the app private key, exchanged for an
-    installation access token (1h). Same get/invalidate surface as OAuthRefresher."""
+    """GitHub App: signed JWT exchanged for a 1h installation access token."""
 
     app_id: int
     private_key_secret: str

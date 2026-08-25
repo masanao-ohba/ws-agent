@@ -1,9 +1,5 @@
-"""Project registry. Source of truth is config/projects.yaml, delivered to the
-runtime as the WS_PROJECTS env var (JSON) by scripts/deploy.py.
-
-Resolution is lazy: nothing reads the environment at import time.
-Credential values never appear here; only Secret Manager secret names do.
-"""
+"""Project registry, read lazily from the WS_PROJECTS env var (JSON) that
+scripts/deploy.py renders from config/projects.yaml. Holds secret names only."""
 
 import functools
 import json
@@ -19,17 +15,13 @@ class BacklogConfig(BaseModel):
 
 
 class GithubConfig(BaseModel):
-    """Either a static PAT or a GitHub App installation (future).
-
-    The PAT is a static secret like every other credential here; the
-    App path mints installation tokens instead and is not yet implemented.
-    """
+    """Either a static PAT or a GitHub App installation (not yet implemented)."""
 
     pat_secret: str | None = None
     installation_id: int | None = None
     repos: list[str] = Field(default_factory=list)  # search hint, not a boundary
-    # Forks are absent from GitHub's code index: a query there answers zero
-    # for any term, which is indistinguishable from "no such code".
+    # Forks are absent from GitHub's code index: a query there answers zero for
+    # any term, indistinguishable from "no such code".
     code_search_indexed: bool = True
 
 

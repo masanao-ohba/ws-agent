@@ -1,8 +1,4 @@
-"""Backlog tools: REST API v2, GET only. No write code path exists.
-
-Per-project API key, 429 backoff honouring Retry-After, offset paging
-with count=100.
-"""
+"""Backlog tools: REST API v2, GET only. No write code path exists."""
 
 from typing import Any
 
@@ -14,7 +10,7 @@ from ..gateway.envelope import NotConfigured, fan_out
 from ..schemas import Item, Source
 
 _MAX_RETRIES = 5
-# Wiki and document list endpoints return the whole page body inline
+# The wiki and document list endpoints return whole page bodies inline
 # (180k-character pages exist), so search results keep a preview only.
 _SEARCH_BODY_CHARS = 400
 
@@ -67,8 +63,7 @@ async def search_backlog_issues(query: str, tool_context: ToolContext) -> dict[s
 
     async def fetch(project: Project) -> list[Item]:
         assert project.backlog is not None
-        # All configured Backlog projects in one query: /issues accepts
-        # repeated projectId[] params.
+        # /issues accepts repeated projectId[]: all projects in one query.
         ids = [
             (await _get(project, f"projects/{key}", {}))["id"]
             for key in project.backlog.project_keys
@@ -143,8 +138,7 @@ async def search_backlog_wikis(query: str, tool_context: ToolContext) -> dict[st
 
     async def fetch(project: Project) -> list[Item]:
         assert project.backlog is not None
-        # /wikis scopes to one project per call: projectIdOrKey is singular
-        # here, unlike the repeated projectId[] that /issues takes.
+        # /wikis takes a singular projectIdOrKey, unlike /issues: one call each.
         items: list[Item] = []
         for key in project.backlog.project_keys:
             wikis = await _get(project, "wikis", {"projectIdOrKey": key, "keyword": query})
@@ -232,8 +226,6 @@ async def get_backlog_document(document_id: str, tool_context: ToolContext) -> d
 
     async def fetch(project: Project) -> list[Item]:
         doc = await _get(project, f"documents/{document_id}", {})
-        # The response names its project by numeric id; the citation URL
-        # needs the project key.
         return [_document_item(project, doc, await _project_keys_by_id(project))]
 
     return (await fan_out(Source.BACKLOG, projects[:1], fetch)).to_tool_result()

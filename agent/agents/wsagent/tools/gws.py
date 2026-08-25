@@ -1,9 +1,5 @@
-"""Google Workspace tools: direct Google APIs with readonly-only scopes.
-
-The official GWS MCP is not generally available, so this uses the
-plain APIs. Scopes on the
-stored refresh tokens are *.readonly only — the write scope never exists.
-"""
+"""Google Workspace tools: direct Google APIs. Scopes on the stored refresh
+tokens are *.readonly only — the write scope never exists."""
 
 from typing import Any
 
@@ -243,8 +239,8 @@ async def read_drive_document(file_id: str, tool_context: ToolContext) -> dict[s
                 {"fields": "id,name,mimeType,webViewLink", "supportsAllDrives": True},
             )
         except httpx.HTTPStatusError as e:
-            # Not visible from this project's credential: an empty result for
-            # this project, not a failure — another project may hold the file.
+            # Invisible to this project's credential, but another project may
+            # hold the file: an empty result here, not a failure.
             if e.response.status_code in (403, 404):
                 return []
             raise

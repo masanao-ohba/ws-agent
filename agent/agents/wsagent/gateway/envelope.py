@@ -10,17 +10,14 @@ MAX_ITEM_CHARS = 4_000
 MAX_ENVELOPE_CHARS = 24_000
 PROJECT_CONCURRENCY = 3
 
-# One fetcher = one (project) -> items coroutine. Raising is allowed; the
-# fan-out converts exceptions to envelope failures so the LLM never sees one.
+# Raising is allowed: the fan-out turns exceptions into envelope failures, so
+# the LLM never sees one.
 Fetcher = Callable[[Project], Awaitable[list[Item]]]
 
 
 async def fan_out(source: Source, projects: list[Project], fetch: Fetcher) -> Envelope:
-    """Query each project concurrently and merge into one envelope.
-
-    A project without configuration for this source yields a not_configured
-    failure instead of being silently skipped.
-    """
+    """Query each project concurrently and merge into one envelope. A project
+    unconfigured for this source fails as not_configured, never silently skipped."""
     env = Envelope(source=source, projects=[p.id for p in projects])
     sem = asyncio.Semaphore(PROJECT_CONCURRENCY)
 
@@ -67,4 +64,4 @@ class NotConfigured(Exception):
 
 
 class AuthExpired(Exception):
-    """Refresh token invalid — operational event, alerting handled by logging."""
+    """Refresh token invalid."""

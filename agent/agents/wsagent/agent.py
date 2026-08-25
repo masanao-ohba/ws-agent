@@ -40,9 +40,8 @@ from .tools.slack import get_slack_thread, search_slack_messages
 
 logger = logging.getLogger(__name__)
 
-# httpx logs every request URL at INFO. Backlog's only auth mechanism is an
-# apiKey query parameter, so those lines would put the credential into
-# Cloud Logging in plain text. WARNING and above only.
+# Backlog's apiKey rides in the query string, and httpx logs request URLs at
+# INFO — that would put the credential into Cloud Logging in plain text.
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Identifiers the model must never supply; authoritative values live in state.
@@ -62,8 +61,7 @@ def _strip_model_supplied_identifiers(
 def _log_tool_result(
     tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, tool_response: Any
 ) -> None:
-    # Coverage evidence for evaluating retrieval quality: which tools ran,
-    # with what query, and how much came back. Values only — no item content.
+    # Coverage evidence: values only, never item content.
     if isinstance(tool_response, dict):
         summary = "count=%s complete=%s failures=%s" % (
             tool_response.get("count"),
@@ -76,13 +74,8 @@ def _log_tool_result(
 
 
 class _GlobalEndpointGemini(Gemini):
-    """Gemini whose inference calls go to the global endpoint.
-
-    Regional on-demand capacity (DSQ) can momentarily exhaust into a 429
-    RESOURCE_EXHAUSTED, while the global endpoint routes to wherever capacity
-    exists. Only the model client changes; sessions and
-    the engine stay regional.
-    """
+    """Gemini whose inference calls go to the global endpoint, avoiding regional
+    429s. Only the model client moves; sessions and the engine stay regional."""
 
     @cached_property
     def api_client(self):
@@ -132,9 +125,8 @@ _MAX_EXPLORER_CALLS = 3
 def _limit_explorer_calls(
     tool: BaseTool, args: dict[str, Any], tool_context: ToolContext
 ) -> dict[str, Any] | None:
-    # The counter key carries the invocation id, so each user turn starts at
-    # zero without any reset step, and the temp: prefix keeps the spent
-    # counters out of the persisted session state.
+    # invocation id in the key: each turn starts at zero with no reset step.
+    # temp: prefix keeps spent counters out of the persisted session state.
     key = f"temp:explorer_calls:{tool_context.invocation_id}"
     calls = tool_context.state.get(key, 0)
     if calls >= _MAX_EXPLORER_CALLS:
@@ -147,12 +139,8 @@ def _limit_explorer_calls(
 class _RetryPlanOnlyAgent(BaseAgent):
     """Re-run once when a turn ends without a single tool call.
 
-    The model sometimes answers a question by narrating its search plan and
-    stopping — finish_reason STOP, zero tool calls — which the runtime counts
-    as a completed turn. Such a turn holds no retrieved evidence, so it is
-    re-run once; the second attempt almost always executes the plan it just
-    wrote. Retrieval-grounded turns pass through untouched.
-    """
+    A plan-only turn (finish_reason STOP, zero tool calls) counts as complete
+    for the runtime but holds no retrieved evidence."""
 
     inner: Agent
 
@@ -160,9 +148,8 @@ class _RetryPlanOnlyAgent(BaseAgent):
         self, ctx: InvocationContext
     ) -> AsyncGenerator[Event, None]:
         for attempt in range(2):
-            # Events are held back until the first tool call: a plan-only
-            # turn is a promise, not an answer, and its retry replaces it
-            # entirely. From the first call on, everything streams through.
+            # Held back until the first tool call, since a retry replaces a
+            # plan-only turn entirely; from that call on, everything streams.
             held: list[Event] = []
             called_tool = False
             async for event in self.inner.run_async(ctx):
@@ -186,8 +173,7 @@ _explorer_agent = Agent(
     planner=BuiltInPlanner(
         thinking_config=genai_types.ThinkingConfig(thinking_budget=-1)
     ),
-    # Default temperature (1.0) makes retrieval trajectories diverge run to
-    # run; 0.5 keeps them consistent.
+    # Below the 1.0 default: keeps retrieval trajectories consistent run to run.
     generate_content_config=genai_types.GenerateContentConfig(temperature=0.5),
     description=(
         "Executes one retrieval assignment across Backlog, Google Workspace,"
@@ -219,9 +205,8 @@ _explorer_agent = Agent(
 _orchestrator_agent = Agent(
     name="wsagent_llm",
     model=_GlobalEndpointGemini(model="gemini-2.5-flash"),
-    # -1 (dynamic) lets the model skip thinking, and measurement showed it
-    # always does — while judging whether material matches the question is
-    # exactly the step that needs it. A fixed budget forces the deliberation.
+    # A fixed budget, not -1 (dynamic): dynamic lets the model skip thinking
+    # entirely, and judging material against the question is what needs it.
     planner=BuiltInPlanner(
         thinking_config=genai_types.ThinkingConfig(thinking_budget=8192)
     ),

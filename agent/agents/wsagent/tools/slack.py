@@ -1,13 +1,5 @@
-"""Slack tools: Web API with a user token, read methods only.
-
-The official Slack MCP exposes three channel-scoped tools and no search,
-so it cannot serve cross-source discovery. These tools
-call the Web API directly (search.messages, conversations.replies), which is
-also where permalinks come from — every item must cite its source.
-
-Only the methods listed in READ_METHODS are reachable; the token's scopes and
-the authorizing user's channel membership are the actual access boundary.
-"""
+"""Slack tools: Web API with a user token, read methods only. The token's
+scopes and the authorizing user's channel membership are the access boundary."""
 
 from typing import Any
 
@@ -41,13 +33,8 @@ class MethodNotAllowed(Exception):
 
 
 def _token(project: Project) -> str:
-    """The stored user token, used as-is.
-
-    Token rotation is deliberately not used: a rotating
-    credential would make the runtime rewrite its own secrets, which neither
-    Secret Manager nor this system's "hold what the project provides" model
-    is meant for.
-    """
+    """The stored user token, used as-is. Rotation is deliberately not used:
+    the runtime never rewrites its own secrets."""
     if project.slack is None:
         raise NotConfigured()
     return secrets.store().get(project.slack.user_token_secret)

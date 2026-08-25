@@ -1,11 +1,6 @@
-"""Minimal Streamable-HTTP MCP client used by the gateway (GitHub).
-
-MCP here is a data-fetch protocol, not an LLM-facing toolset: the allowlists
-below are the single read-only gate. A tool name outside its service allowlist
-cannot be called — the guard is code, not convention. verify_allowlists()
-lets a deploy-time smoke test catch a server-side rename loudly instead of
-silently returning nothing.
-"""
+"""Minimal Streamable-HTTP MCP client used by the gateway (GitHub). The
+allowlists below are the single read-only gate: a tool outside its service
+allowlist cannot be called."""
 
 import json
 from dataclasses import dataclass
@@ -33,9 +28,8 @@ GITHUB_ALLOWED: frozenset[str] = frozenset(
 GITHUB_URL = "https://api.githubcopilot.com/mcp/readonly"
 GITHUB_TOOLSETS = "repos,issues,pull_requests"
 
-# Slack is not reached over MCP: the official server exposes three
-# channel-scoped tools and no search, so tools/slack.py
-# calls the Web API directly.
+# Slack has no allowlist here: the official server exposes three channel-scoped
+# tools and no search, so tools/slack.py calls the Web API directly.
 
 
 class McpError(Exception):
@@ -48,9 +42,8 @@ class ToolNotAllowed(McpError):
 
 @dataclass
 class McpSession:
-    """One short-lived session: initialize on first call, no local state kept
-    beyond the server-issued session id. 401 handling (token refresh + single
-    retry) lives in the caller, which owns the TokenProvider."""
+    """One short-lived session, initialized on first call. 401 handling belongs
+    to the caller, which owns the TokenProvider."""
 
     url: str
     token: str

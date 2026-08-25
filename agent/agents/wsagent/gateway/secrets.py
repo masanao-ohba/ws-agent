@@ -1,9 +1,5 @@
-"""Secret Manager access. Lazy singleton; tests replace it via set_store().
-
-Read-only by design: every credential this system holds is a static value
-placed there by a human. Nothing the runtime does changes a secret, so there
-is no write path here.
-"""
+"""Secret Manager access, read-only by design (no write path exists).
+Lazy singleton; tests replace it via set_store()."""
 
 import functools
 import os
