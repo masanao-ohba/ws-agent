@@ -14,7 +14,6 @@ import pytest
 
 from agents.wsagent.config import BacklogConfig, Project, Registry
 from agents.wsagent.gateway import secrets
-from agents.wsagent.gateway.envelope import MAX_ITEM_CHARS
 from agents.wsagent.tools import backlog
 
 DOMAIN = "example.backlog.com"
@@ -118,7 +117,6 @@ def test_read_tools_return_the_whole_body(calls: list[httpx.Request]) -> None:
 
     assert wiki["body"] == WIKI["content"]
     assert document["body"] == DOCUMENT["plain"]
-    assert len(wiki["body"]) < MAX_ITEM_CHARS  # preview cap is the only clipping here
 
 
 def test_urls_distinguish_wiki_pages_from_documents(calls: list[httpx.Request]) -> None:

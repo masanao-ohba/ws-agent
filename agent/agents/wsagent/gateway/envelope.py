@@ -6,8 +6,10 @@ from collections.abc import Awaitable, Callable
 from ..config import Project
 from ..schemas import Envelope, FailureReason, Item, Source
 
-MAX_ITEM_CHARS = 4_000
-MAX_ENVELOPE_CHARS = 24_000
+MAX_ENVELOPE_CHARS = 60_000
+# A per-item floor keeps a large result set from shrinking to useless stubs;
+# past that many items the envelope budget is exceeded and the tail is dropped.
+MIN_ITEM_CHARS = 1_000
 PROJECT_CONCURRENCY = 3
 
 # Raising is allowed: the fan-out turns exceptions into envelope failures, so
@@ -40,23 +42,39 @@ async def fan_out(source: Source, projects: list[Project], fetch: Fetcher) -> En
 
 
 def truncate(env: Envelope) -> None:
-    """Cap per-item and whole-envelope body size; truncation is self-declared."""
-    truncated = False
-    for item in env.items:
-        if len(item.body) > MAX_ITEM_CHARS:
-            item.body = item.body[:MAX_ITEM_CHARS]
-            truncated = True
+    """Share the envelope budget across items; truncation is self-declared.
+
+    The budget is divided by item count rather than capped per item, so a
+    single read gets the whole budget while a search shows every candidate
+    shortened. Dropping items outright would hide candidates the caller is
+    searching for, so that happens only past the per-item floor.
+    """
+    if not env.items:
+        return
+    share = max(MAX_ENVELOPE_CHARS // len(env.items), MIN_ITEM_CHARS)
+    clipped: list[str] = []
     total = 0
     kept: list[Item] = []
+    dropped = 0
     for item in env.items:
+        if total + min(len(item.body), share) > MAX_ENVELOPE_CHARS:
+            dropped += 1
+            continue
+        if len(item.body) > share:
+            clipped.append(f"{item.url} {share}/{len(item.body)}")
+            item.body = item.body[:share]
         total += len(item.body)
-        if total > MAX_ENVELOPE_CHARS:
-            truncated = True
-            break
         kept.append(item)
     env.items[:] = kept
-    if truncated:
-        env.add_failure("*", FailureReason.TRUNCATED)
+    if clipped or dropped:
+        # Say what was cut and by how much: the caller can only decide whether
+        # to fetch the rest if it knows the rest exists. Dropped items lead,
+        # since a long list of clipped ones would otherwise crowd them out.
+        parts = [f"{dropped} item(s) dropped"] if dropped else []
+        parts += clipped[:3]
+        if len(clipped) > 3:
+            parts.append(f"and {len(clipped) - 3} more shortened")
+        env.add_failure("*", FailureReason.TRUNCATED, "; ".join(parts))
 
 
 class NotConfigured(Exception):

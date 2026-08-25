@@ -9,7 +9,7 @@ import yaml
 from agents.wsagent.config import Registry
 from agents.wsagent.gateway.envelope import (
     MAX_ENVELOPE_CHARS,
-    MAX_ITEM_CHARS,
+    MIN_ITEM_CHARS,
     NotConfigured,
     fan_out,
     truncate,
@@ -49,18 +49,51 @@ def test_envelope_failure_flips_complete() -> None:
 
 def test_truncation_is_self_declared() -> None:
     env = Envelope(source=Source.DRIVE, projects=["p1"])
-    env.items = [_item("a" * (MAX_ITEM_CHARS + 1))]
+    env.items = [_item("a" * (MAX_ENVELOPE_CHARS + 1))]
     truncate(env)
-    assert len(env.items[0].body) == MAX_ITEM_CHARS
+    assert len(env.items[0].body) == MAX_ENVELOPE_CHARS
     assert not env.complete
-    assert any(f.reason == FailureReason.TRUNCATED for f in env.failures)
+    failure = next(f for f in env.failures if f.reason == FailureReason.TRUNCATED)
+    # The caller can only decide whether to fetch the rest if it is told the
+    # rest exists: kept/total is part of the declaration.
+    assert f"{MAX_ENVELOPE_CHARS}/{MAX_ENVELOPE_CHARS + 1}" in failure.detail
+
+
+def test_a_single_item_gets_the_whole_budget() -> None:
+    """A read returns one item; capping it below the budget wastes the rest."""
+    env = Envelope(source=Source.BACKLOG, projects=["p1"])
+    env.items = [_item("a" * 7_096)]
+    truncate(env)
+    assert len(env.items[0].body) == 7_096
+    assert env.complete
+
+
+def test_every_candidate_survives_a_crowded_search() -> None:
+    """Shortening all candidates beats showing a few and hiding the rest."""
+    env = Envelope(source=Source.BACKLOG, projects=["p1"])
+    env.items = [_item("a" * 10_000) for _ in range(20)]
+    truncate(env)
+    assert len(env.items) == 20
+    assert all(len(i.body) == MAX_ENVELOPE_CHARS // 20 for i in env.items)
 
 
 def test_envelope_total_budget() -> None:
     env = Envelope(source=Source.DRIVE, projects=["p1"])
-    env.items = [_item("a" * MAX_ITEM_CHARS) for _ in range(20)]
+    env.items = [_item("a" * 10_000) for _ in range(20)]
     truncate(env)
     assert sum(len(i.body) for i in env.items) <= MAX_ENVELOPE_CHARS
+
+
+def test_items_past_the_floor_are_dropped_and_declared() -> None:
+    """Below the floor an item says nothing, so the tail is dropped instead."""
+    count = MAX_ENVELOPE_CHARS // MIN_ITEM_CHARS + 10
+    env = Envelope(source=Source.DRIVE, projects=["p1"])
+    env.items = [_item("a" * 5_000) for _ in range(count)]
+    truncate(env)
+    assert len(env.items) == MAX_ENVELOPE_CHARS // MIN_ITEM_CHARS
+    assert "dropped" in next(
+        f for f in env.failures if f.reason == FailureReason.TRUNCATED
+    ).detail
 
 
 def test_fan_out_converts_exceptions_to_failures() -> None:
