@@ -93,8 +93,18 @@ class _GlobalEndpointGemini(Gemini):
 
 
 def _instruction(ctx: ReadonlyContext) -> str:
-    """System prompt plus session-provided reference data."""
+    """System prompt plus registry- and session-provided reference data."""
+    from .config import registry
+
     prompt = ORCHESTRATOR_PROMPT
+    projects = registry().projects_for(ctx.state.get("project_ids") or [])
+    if projects:
+        names = ", ".join(f"{p.name} ({p.id})" for p in projects)
+        prompt += (
+            f"\nThe projects you serve: {names}. Shared sources also hold"
+            " records of other products; a record is material only if it is"
+            " about one of your projects.\n"
+        )
     anchors = ctx.state.get("anchors") or []
     if anchors:
         lines = "\n".join(
@@ -110,6 +120,9 @@ def _explorer_instruction(ctx: ReadonlyContext) -> str:
 
     prompt = EXPLORER_PROMPT
     projects = registry().projects_for(ctx.state.get("project_ids") or [])
+    if projects:
+        names = ", ".join(f"{p.name} ({p.id})" for p in projects)
+        prompt += f"\nThe projects you serve: {names}.\n"
     repos = [r for p in projects if p.github for r in p.github.repos]
     if repos:
         lines = "\n".join(f"- {r}" for r in repos)
