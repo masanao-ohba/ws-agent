@@ -35,7 +35,13 @@ WIKI = {
     "updated": "2026-08-01T00:00:00Z",
 }
 DOCUMENT_ID = "3f2a" * 8
-DOCUMENT = {"id": DOCUMENT_ID, "projectId": 22, "title": "運用手順", "plain": "い" * 2_000}
+DOCUMENT = {
+    "id": DOCUMENT_ID,
+    "projectId": 22,
+    "title": "運用手順",
+    "plain": "い" * 2_000,
+    "updated": "2026-07-02T00:00:00Z",
+}
 
 CTX = SimpleNamespace(state={"project_ids": ["p"]})
 
@@ -117,6 +123,16 @@ def test_read_tools_return_the_whole_body(calls: list[httpx.Request]) -> None:
 
     assert wiki["body"] == WIKI["content"]
     assert document["body"] == DOCUMENT["plain"]
+
+
+def test_titles_carry_how_stale_a_record_is(calls: list[httpx.Request]) -> None:
+    """A hand-maintained page may have drifted from the code; the reader can
+    only weigh that if the date is where titles are read."""
+    wiki = asyncio.run(backlog.search_backlog_wikis("q", CTX))["items"][0]
+    document = asyncio.run(backlog.search_backlog_documents("q", CTX))["items"][0]
+
+    assert wiki["title"] == "設計メモ (updated 2026-08-01)"
+    assert document["title"] == "運用手順 (updated 2026-07-02)"
 
 
 def test_urls_distinguish_wiki_pages_from_documents(calls: list[httpx.Request]) -> None:

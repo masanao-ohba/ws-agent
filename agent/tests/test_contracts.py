@@ -164,3 +164,22 @@ def test_slack_read_methods_reject_write_methods() -> None:
     )
     with pytest.raises(MethodNotAllowed):
         asyncio.run(_call(project, "chat.postMessage", {}))
+
+
+def test_issue_title_carries_its_status() -> None:
+    """Whether an issue records what shipped or what is still under discussion
+    decides how it may be used, so it rides in the title, not in extra."""
+    from agents.wsagent.config import BacklogConfig, Project
+    from agents.wsagent.tools.backlog import _issue_item
+
+    project = Project(
+        id="p",
+        name="P",
+        members=[],
+        backlog=BacklogConfig(domain="d.backlog.jp", project_keys=["X"], api_key_secret="s"),
+    )
+    item = _issue_item(
+        project,
+        {"issueKey": "X-1", "summary": "件名", "status": {"name": "仕様検討・見積中"}},
+    )
+    assert item.title == "[X-1][仕様検討・見積中] 件名"

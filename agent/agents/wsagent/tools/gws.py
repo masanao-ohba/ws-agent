@@ -210,7 +210,7 @@ async def search_drive_files(query: str, tool_context: ToolContext) -> dict[str,
             Item(
                 project=project.id,
                 url=f.get("webViewLink") or f"https://drive.google.com/file/d/{f['id']}",
-                title=f["name"],
+                title=f"{f['name']} (modified {f['modifiedTime'][:10]})",
                 extra={"file_id": f["id"], "mime": f["mimeType"], "modified": f["modifiedTime"]},
             )
             for f in body.get("files", [])

@@ -41,12 +41,16 @@ async def _get(project: Project, path: str, params: dict[str, Any]) -> Any:
 def _issue_item(project: Project, issue: dict[str, Any]) -> Item:
     assert project.backlog is not None
     key = issue["issueKey"]
+    # Status belongs in the title, not in extra: whether an issue records
+    # what shipped or what is still under discussion decides how it may be
+    # used, and a reader skimming titles must not have to look it up.
+    status = issue.get("status", {}).get("name") or ""
     return Item(
         project=project.id,
         url=f"https://{project.backlog.domain}/view/{key}",
-        title=f"[{key}] {issue['summary']}",
+        title=f"[{key}][{status}] {issue['summary']}",
         body=issue.get("description") or "",
-        extra={"status": issue.get("status", {}).get("name")},
+        extra={"status": status, "updated": _day(issue.get("updated"))},
     )
 
 
@@ -106,6 +110,11 @@ async def get_backlog_issue(issue_key: str, tool_context: ToolContext) -> dict[s
     return (await fan_out(Source.BACKLOG, matching[:1], fetch)).to_tool_result()
 
 
+def _day(stamp: str | None) -> str:
+    """The date out of an ISO timestamp; how stale a record is, at a glance."""
+    return (stamp or "")[:10]
+
+
 def _preview(items: list[Item]) -> list[Item]:
     for item in items:
         item.body = item.body[:_SEARCH_BODY_CHARS]
@@ -114,12 +123,15 @@ def _preview(items: list[Item]) -> list[Item]:
 
 def _wiki_item(project: Project, wiki: dict[str, Any]) -> Item:
     assert project.backlog is not None
+    # Wiki pages are hand-maintained and go stale; the date says how far the
+    # page may have drifted from what the code now does.
+    updated = _day(wiki.get("updated"))
     return Item(
         project=project.id,
         url=f"https://{project.backlog.domain}/alias/wiki/{wiki['id']}",
-        title=wiki["name"],
+        title=f"{wiki['name']} (updated {updated})" if updated else wiki["name"],
         body=wiki.get("content") or "",
-        extra={"wiki_id": wiki["id"], "updated": wiki.get("updated")},
+        extra={"wiki_id": wiki["id"], "updated": updated},
     )
 
 
@@ -176,12 +188,14 @@ async def _project_keys_by_id(project: Project) -> dict[int, str]:
 def _document_item(project: Project, doc: dict[str, Any], keys_by_id: dict[int, str]) -> Item:
     assert project.backlog is not None
     key = keys_by_id.get(doc["projectId"], "")
+    updated = _day(doc.get("updated"))
+    title = doc.get("title") or ""
     return Item(
         project=project.id,
         url=f"https://{project.backlog.domain}/document/{key}/{doc['id']}",
-        title=doc.get("title") or "",
+        title=f"{title} (updated {updated})" if updated else title,
         body=doc.get("plain") or "",
-        extra={"document_id": doc["id"]},
+        extra={"document_id": doc["id"], "updated": updated},
     )
 
 
