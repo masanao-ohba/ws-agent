@@ -21,10 +21,13 @@ var staticFS embed.FS
 
 const iapEmailHeader = "X-Goog-Authenticated-User-Email"
 
-// identity extracts the IAP-verified user email. Behind IAP this header is
-// stripped from client requests and set by Google; trusting it is safe only
-// because Cloud Run ingress is restricted to IAP. WS_DEV_USER bypasses IAP
-// for local development.
+// identity extracts the IAP-verified user email. Invariants:
+//
+//   - run.invoker is held by the IAP service agent alone.
+//   - Ingress is open; IAP is the gate, not the network.
+//   - X-Goog-Authenticated-User-Email is set by Google, never by the client.
+//
+// WS_DEV_USER bypasses IAP for local development.
 func identity(r *http.Request) (string, error) {
 	if dev := os.Getenv("WS_DEV_USER"); dev != "" {
 		return dev, nil

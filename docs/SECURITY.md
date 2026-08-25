@@ -33,7 +33,7 @@ flowchart LR
 
 | 層 | 何を決めるか | 実装 |
 |---|---|---|
-| IAP | 誰が入れるか | Google グループへの `iap.httpsResourceAccessor` 付与 |
+| IAP | 誰が入れるか | レジストリ `members` から同期された `iap.httpsResourceAccessor`(`frontend/sync_iap.sh`) |
 | BFF | どのプロジェクトのユーザーか | IAP 検証済みメール × レジストリ `members` の突合。非メンバーは 403 |
 | session state | ツールが照会するプロジェクト | `create_session` 時に BFF が設定、以後不変 |
 | Tool Gateway | どのクレデンシャルを使うか | state の `project_ids` からのみ解決 |
@@ -43,7 +43,7 @@ flowchart LR
 
 1. **read-only はツール選定で構造的に保証**: ツールは read 系のみ実装(書き込みコードパスがソース上存在しない)。クレデンシャルの read スコープは第 2 層の防御
 2. **モデル由来識別子の剥奪**: LLM 可視ツールは `project_id` 引数を持たず、`before_tool_callback` がモデルの渡した `project_id` / `project_ids` / `user_email` を剥奪して warning ログ(値は長さのみ記録)
-3. **IAP ヘッダの信頼条件**: `X-Goog-Authenticated-User-Email` を信頼できるのは Cloud Run の ingress が IAP に限定されているため。`WS_DEV_USER` はこの検証をバイパスするローカル開発専用の env であり、IAP 有効環境では設定禁止
+3. **IAP ヘッダの信頼条件**: `X-Goog-Authenticated-User-Email` を信頼できるのは `run.invoker` が IAP サービスエージェントにのみ付与されているため。ingress は開いており(ロードバランサを挟まない IAP for Cloud Run の要件)、ゲートはネットワークではなく IAM。`WS_DEV_USER` はこの検証をバイパスするローカル開発専用の env であり、IAP 有効環境では設定禁止
 4. **書き込み経路の非存在をテストで固定**: `test_secret_store_has_no_write_path` が Secret Manager への書き込み経路が存在しないことを契約テストで保証
 
 ## クレデンシャル管理

@@ -1,22 +1,22 @@
 # Source of truth for the project registry. Rendered to WS_PROJECTS (JSON)
 # env var by agent/scripts/deploy.py. Secrets hold Secret Manager names only.
 projects:
-  - id: prj838
-    name: KANAMETO
+  - id: example
+    name: EXAMPLE               # 表示名(サービス名)
     members:                       # fill in at rollout
       - user@example.com
     backlog:
       domain: example.backlog.jp   # fill in at rollout
-      project_keys: [PRJ838]
-      api_key_secret: ws-backlog-key-prj838
+      project_keys: [PRJXXX]
+      api_key_secret: ws-backlog-key-example
     github:
       installation_id: 0           # fill in after GitHub App installation
       repos: []
     gws:
-      refresh_token_secret: ws-gws-token-prj838
+      refresh_token_secret: ws-gws-token-example
       drive_roots: []
     slack:
-      user_token_secret: ws-slack-token-prj838
+      user_token_secret: ws-slack-token-example
       team_id: T0XXXXXXX           # fill in at rollout
 github_app:
   app_id: 0                        # fill in at rollout

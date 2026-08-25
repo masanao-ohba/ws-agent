@@ -1,6 +1,8 @@
 # Local verification env (never committed)
 *.personal.yaml
 *.personal.json
+*organization-personal.yaml
+*organization-personal.json
 agent/scripts/setup_personal.sh
 
 # Build artifacts and caches

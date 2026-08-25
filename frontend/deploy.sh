@@ -61,5 +61,9 @@ gcloud run deploy "$SERVICE" \
   --set-env-vars "^~^WS_PROJECTS=$WS_PROJECTS~WS_ENGINES=$WS_ENGINES" \
   --quiet
 
+# Membership has one source: the registry drives WS_PROJECTS (which project a
+# user belongs to) and IAP access (whether they may enter) alike.
+"$REPO_ROOT/frontend/sync_iap.sh" "$ENV"
+
 gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
   --format 'value(status.url)'
