@@ -18,7 +18,7 @@ flowchart LR
         A[IAP<br/>Google アカウント認証]
     end
     subgraph 基盤
-        B[BFF<br/>members 突合で所属解決]
+        B[BFF<br/>IAP 通過者は全プロジェクトにアクセス可]
         C[session state<br/>project_ids は BFF のみが設定]
         D[Tool Gateway<br/>state からのみ project 解決]
     end
@@ -34,10 +34,12 @@ flowchart LR
 | 層 | 何を決めるか | 実装 |
 |---|---|---|
 | IAP | 誰が入れるか | レジストリ `members` から同期された `iap.httpsResourceAccessor`(`frontend/sync_iap.sh`) |
-| BFF | どのプロジェクトのユーザーか | IAP 検証済みメール × レジストリ `members` の突合。非メンバーは 403 |
+| BFF | どのプロジェクトを照会対象にするか | IAP 通過者は全プロジェクトにアクセス可(レジストリの全プロジェクト id を session state に設定) |
 | session state | ツールが照会するプロジェクト | `create_session` 時に BFF が設定、以後不変 |
 | Tool Gateway | どのクレデンシャルを使うか | state の `project_ids` からのみ解決 |
 | プラットフォーム | 何が見えるか | 各サービスの既存権限(上表) |
+
+> **トレードオフの受容**: 複数プロジェクトを同一サービスに載せた場合、入場者は全プロジェクトの共有クレデンシャルを使える。プロジェクト境界が必要になったらサービスを分けるか、members 突合(BFF での所属解決)を再導入する。
 
 ## 多層防御
 

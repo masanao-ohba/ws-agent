@@ -61,7 +61,7 @@ printf '%s' '<value>' | gcloud secrets create <name> --project <PROJECT> \
 projects:
   - id: example             # 英数小文字のサービス名。state・ログ・封筒で使う識別子
     name: EXAMPLE           # 表示名
-    members:                # 所属解決(IAP 検証済みメールと突合)
+    members:                # IAP 入場許可リスト(sync_iap.sh が同期)
       - user@example.com
     backlog:
       domain: example.backlog.jp
@@ -81,12 +81,7 @@ projects:
 
 BFF は `--iap` 付きでデプロイされ、`X-Goog-Authenticated-User-Email` ヘッダで本人確認する。
 
-**メンバーの正はレジストリの `members` ただ 1 箇所**。ここから 2 つの層が導かれる。
-
-| 層 | 決めること | 適用 |
-|---|---|---|
-| IAP | 入場できるか | `frontend/sync_iap.sh <env>` が `roles/iap.httpsResourceAccessor` を突合(`deploy.sh` が末尾で自動実行) |
-| BFF | どのプロジェクトの人か | `WS_PROJECTS` に展開され、突合しない者は 403 |
+**メンバーの正はレジストリの `members` ただ 1 箇所**。`members` の役割は IAP 入場許可リストのみで、`frontend/sync_iap.sh <env>` が `roles/iap.httpsResourceAccessor` を突合する(`deploy.sh` が末尾で自動実行)。IAP を通過したユーザーは全プロジェクトにアクセス可(BFF での所属解決は行わない)。
 
 同期は `user:` バインディングのみを対象とし、グループ・サービスアカウントには触れない。差分の確認は `--dry-run`。
 
@@ -118,7 +113,8 @@ root: _RetryPlanOnlyAgent          ツール呼出ゼロのターンを 1 度だ
 | システムプロンプト | `agent/agents/wsagent/prompts/system.py` | Agent Engine |
 | モデル・パラメータ | `agent/agents/wsagent/agent.py` | Agent Engine |
 | ツール・Gateway | `agent/agents/wsagent/{tools,gateway}/` | Agent Engine |
-| メンバー・アンカー・接続設定 | `config/projects.yaml` | Agent Engine **と** BFF(BFF のデプロイが IAP 側も同期する) |
+| アンカー・接続設定 | `config/projects.yaml` | Agent Engine **と** BFF |
+| メンバー(IAP 入場許可) | `config/projects.yaml` の `members` | `frontend/sync_iap.sh <env>`(BFF デプロイ時は自動実行) |
 | UI・SSE 中継 | `frontend/` | BFF |
 | シークレット値の差替え | Secret Manager(バージョン追加) | 不要(遅延解決のため次回呼び出しから反映) |
 
@@ -147,7 +143,7 @@ Cloud Build でイメージをビルドし、レジストリを `WS_PROJECTS` / 
 
 ### 3.4 デプロイ後の確認
 
-1. BFF の URL を開き、ランチャー画面と所属プロジェクトのバッジ表示を確認
+1. BFF の URL を開き、ランチャー画面と全プロジェクトのバッジ表示を確認
 2. 横断質問を 1 件送信し、ストリーミング応答・出典リンク・右ペインの「参照した記録」を確認
 3. 探索の中身は Agent Engine の **Playground**(セッションイベント)で function_call / function_response を確認できる
 
@@ -193,7 +189,6 @@ Cloud Build でイメージをビルドし、レジストリを `WS_PROJECTS` / 
 | `auth_expired` failure | Cloud Logging(severity=ERROR) | リフレッシュトークン失効。§2.2 の手順で再登録 |
 | 429 RESOURCE_EXHAUSTED | Agent Engine ログ | global endpoint で原則回避済み。継続するならクォータ確認 |
 | セッションが分かれる/引き継がれる | BFF ログ | `conv_id` は state に保存され `list_sessions` で全インスタンスが収束する設計。BFF のデプロイ版が最新か確認 |
-| 403 "not a member" | — | レジストリ `members` に IAP メールが無い。YAML 更新 → BFF 再デプロイ |
-| IAP の「アクセス権がありません」画面 | — | IAP 側に未反映。`frontend/sync_iap.sh <env> --dry-run` で差分を確認し同期 |
+| IAP の「アクセス権がありません」画面 | — | レジストリ `members` に無い、または IAP 側に未反映。YAML 更新後 `frontend/sync_iap.sh <env> --dry-run` で差分を確認し同期 |
 | ツールが空封筒を返す | 封筒の `failures[].reason` | `not_configured`(レジストリに該当ソースの設定なし)/ `timeout` / `upstream_error` を自己申告している |
 | GitHub コード検索が常に 0 件 | 封筒の `failures[].reason` が `not_configured` | 対象が fork のため GitHub の索引対象外。`code_search_indexed: false` による意図的な遮断。ソースへは `search_github_paths` / `list_github_tree` から到達する |

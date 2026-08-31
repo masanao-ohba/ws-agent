@@ -1,7 +1,8 @@
 package main
 
 // Registry mirrors config/projects.yaml (rendered to WS_PROJECTS by deploy).
-// The BFF reads only what it needs: membership for project resolution.
+// The BFF reads only what it needs; anyone past IAP may access all projects,
+// so members are not rendered here (they feed IAP sync only).
 // Engines is the future fan-out seam: currently exactly one entry.
 
 import (
@@ -18,7 +19,6 @@ type Anchor struct {
 type Project struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
-	Members []string `json:"members"`
 	Anchors []Anchor `json:"anchors"`
 }
 
@@ -37,16 +37,12 @@ func (r *Registry) AnchorsFor(projectIDs []string) []Anchor {
 	return out
 }
 
-// ProjectIDsFor returns the projects the user belongs to. Empty = no access.
-func (r *Registry) ProjectIDsFor(email string) []string {
-	var ids []string
+// AllProjectIDs returns every project id in the registry. Anyone past IAP
+// has access to all projects; per-project membership is not resolved here.
+func (r *Registry) AllProjectIDs() []string {
+	ids := make([]string, 0, len(r.Projects))
 	for _, p := range r.Projects {
-		for _, m := range p.Members {
-			if m == email {
-				ids = append(ids, p.ID)
-				break
-			}
-		}
+		ids = append(ids, p.ID)
 	}
 	return ids
 }

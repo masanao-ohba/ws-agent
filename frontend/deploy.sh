@@ -21,13 +21,13 @@ REGION=$(python3 -c 'import sys,yaml;print(yaml.safe_load(open(sys.argv[1]))["re
 CONFIG="$REPO_ROOT/config/projects.$ENV.yaml"
 [ -f "$CONFIG" ] || CONFIG="$REPO_ROOT/config/projects.yaml"
 
-# Registry: only the fields the BFF needs (membership drives access).
+# Registry: only the fields the BFF needs. members stay out — they feed IAP
+# sync only; anyone past IAP has access to all projects.
 WS_PROJECTS=$(python3 -c '
 import json, sys, yaml
 reg = yaml.safe_load(open(sys.argv[1]))
 print(json.dumps({"projects": [
-    {"id": p["id"], "name": p["name"], "members": p.get("members", []),
-     "anchors": p.get("anchors", [])}
+    {"id": p["id"], "name": p["name"], "anchors": p.get("anchors", [])}
     for p in reg["projects"]
 ]}, ensure_ascii=False))' "$CONFIG")
 
@@ -61,8 +61,8 @@ gcloud run deploy "$SERVICE" \
   --set-env-vars "^~^WS_PROJECTS=$WS_PROJECTS~WS_ENGINES=$WS_ENGINES" \
   --quiet
 
-# Membership has one source: the registry drives WS_PROJECTS (which project a
-# user belongs to) and IAP access (whether they may enter) alike.
+# Membership has one source: registry members drive IAP access (whether a
+# user may enter). Anyone past IAP has access to all projects.
 "$REPO_ROOT/frontend/sync_iap.sh" "$ENV"
 
 gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \

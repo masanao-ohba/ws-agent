@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Reconcile IAP access with the registry: config/projects.<env>.yaml is the
-# single source of truth for membership, at both layers.
+# single source of truth for membership.
 #
-#   L5 (which project a user belongs to) — rendered into WS_PROJECTS by deploy.sh
-#   L2 (whether a user may enter at all) — applied here
+# Registry `members` is solely the IAP entry list (whether a user may enter),
+# applied here. It does not resolve project affiliation: anyone past IAP has
+# access to all projects served by the BFF.
 #
 # Only "user:" bindings are managed. Groups and service accounts are left
 # untouched, so a group can front the same service without being fought over.
@@ -25,8 +26,8 @@ REGION=$(python3 -c 'import sys,yaml;print(yaml.safe_load(open(sys.argv[1]))["re
 CONFIG="$REPO_ROOT/config/projects.$ENV.yaml"
 [ -f "$CONFIG" ] || CONFIG="$REPO_ROOT/config/projects.yaml"
 
-# Desired: every member of every project the BFF serves. L2 is per service,
-# so the union is what may enter; L5 still narrows each user to their projects.
+# Desired: every member of every project the BFF serves. IAP is per service,
+# so the union is what may enter.
 DESIRED=$(python3 -c '
 import sys, yaml
 reg = yaml.safe_load(open(sys.argv[1]))

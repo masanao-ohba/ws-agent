@@ -1,8 +1,8 @@
 package main
 
-// BFF entrypoint. Responsibilities: IAP identity extraction, project
-// resolution, SSE relay to Agent Engine. No tool logic, no credentials
-// other than the service account's own Google auth.
+// BFF entrypoint. Responsibilities: IAP identity extraction, SSE relay to
+// Agent Engine. Anyone past IAP has access to all registry projects. No tool
+// logic, no credentials other than the service account's own Google auth.
 
 import (
 	"context"
@@ -51,9 +51,9 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthenticated", http.StatusUnauthorized)
 		return
 	}
-	projectIDs := s.cfg.Registry.ProjectIDsFor(email)
+	projectIDs := s.cfg.Registry.AllProjectIDs()
 	if len(projectIDs) == 0 {
-		http.Error(w, "not a member of any project", http.StatusForbidden)
+		http.Error(w, "registry has no projects", http.StatusInternalServerError)
 		return
 	}
 	var body struct {
@@ -112,12 +112,10 @@ func (s *server) handleMe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthenticated", http.StatusUnauthorized)
 		return
 	}
-	ids := s.cfg.Registry.ProjectIDsFor(email)
+	ids := s.cfg.Registry.AllProjectIDs()
 	names := make([]string, 0, len(ids))
 	for _, p := range s.cfg.Registry.Projects {
-		if contains(ids, p.ID) {
-			names = append(names, p.Name)
-		}
+		names = append(names, p.Name)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	anchors := s.cfg.Registry.AnchorsFor(ids)

@@ -16,7 +16,7 @@
 ```mermaid
 flowchart TB
     U[ユーザー] -->|Google アカウント| IAP[IAP]
-    IAP --> BFF["BFF (Cloud Run, Go)<br/>IAP ヘッダ検証・所属解決<br/>セッション管理・SSE 中継"]
+    IAP --> BFF["BFF (Cloud Run, Go)<br/>IAP ヘッダ検証<br/>セッション管理・SSE 中継"]
     BFF -->|"REST :streamQuery<br/>state: project_ids / anchors"| AE["Agent Engine (asia-northeast1)<br/>ADK Agent (gemini-2.5-flash)<br/>推論のみ global endpoint"]
     AE --> GW["Tool Gateway<br/>state から project 解決<br/>Secret Manager からクレデンシャル取得<br/>封筒スキーマへ正規化"]
     GW --> BL[Backlog REST]
@@ -41,7 +41,7 @@ ws-agent/
 │   ├── scripts/deploy.py   # Agent Engine デプロイ(create/update 自動判別)
 │   └── tests/              # 封筒・契約テスト
 ├── frontend/               # Go BFF + 静的 SPA(Cloud Run)
-│   ├── main.go             # IAP 検証・所属解決・SSE 中継
+│   ├── main.go             # IAP 検証・SSE 中継
 │   ├── agent.go            # Agent Engine REST クライアント・セッション管理
 │   └── deploy.sh           # Cloud Build + Cloud Run デプロイ
 ├── config/                 # プロジェクトレジストリ(正はここ。秘密は Secret 名参照のみ)
